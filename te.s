@@ -283,17 +283,14 @@ move_cursor_right:
 	PUSH rbx
 	PUSH rcx
 	PUSH r9
-	ADD QWORD PTR [file_contents_pointer], 1
 	MOV rax, [file_contents_pointer]
-	MOV al, [rax]
-	CMP al, '\n'
+	ADD QWORD PTR [file_contents_pointer], 1
+	MOV bl, [rax]
+	CMP bl, '\n'
 	JNE move_cursor_right.new_line_not_found
 	MOV r9, 2
-	MOV rax, [file_contents_pointer]
-	SUB QWORD PTR [terminal_row_pointer], 1
-	MOV QWORD PTR [terminal_column_pointer], 0
+	ADD QWORD PTR [terminal_row_pointer], 1
 	LEA rcx, position
-	PUSH rax
 	MOV rax, [terminal_row_pointer]
 	CALL integer_to_string
 move_cursor_right.string_length_not_reached:
@@ -306,18 +303,13 @@ move_cursor_right.string_length_not_reached:
 	CMP rbx, 0
 	JNE move_cursor_right.string_length_not_reached
 	MOV BYTE PTR [rcx], ';'
-	MOV rax, [terminal_column_pointer]
-	CALL integer_to_string
-move_cursor_right.string_length_not_reached0:
-	MOV dl, [rax]
-	MOV BYTE PTR [rcx], dl
-	ADD rax, 1
 	ADD rcx, 1
 	ADD r9, 1
-	SUB rbx, 1
-	CMP rbx, 0
-	JNE move_cursor_right.string_length_not_reached0
+	MOV BYTE PTR [rcx], '1'
+	ADD rcx, 1
+	ADD r9, 1
 	MOV BYTE PTR [rcx], 'H'
+	ADD r9, 1
 	MOV rax, 1
 	MOV rdi, 1
 	LEA rsi, move_cursor
@@ -433,7 +425,6 @@ Output:
 	rbx = length of string
 */
 integer_to_string:
-        PUSH rbx
         PUSH rcx
         PUSH rdx
 	PUSH r9
@@ -458,15 +449,14 @@ integer_to_string.quotient_is_not_null:
 	CMP r9, 1
 	JNE integer_to_string.integer_is_not_negative
 	MOV BYTE PTR [rcx], '-'
-	SUB rcx, 1
 integer_to_string.integer_is_not_negative:
+	ADD rcx, 1
 	MOV rax, rcx
 	MOV rbx, r10
 	POP r10
 	POP r9
         POP rdx
         POP rcx
-        POP rbx
         RET
 
 print_error_msg:
@@ -527,9 +517,7 @@ position:
 file_contents_pointer:
 	.quad 0
 terminal_row_pointer:
-	.quad 0
-terminal_column_pointer:
-	.quad 0
+	.quad 2
 cursor_row:
 	.word 0
 cursor_column:
