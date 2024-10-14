@@ -178,13 +178,16 @@ _start.new_line_not_found:
 	ADD rbx, 1
 	JMP _start.loop
 _start.null_byte_is_found:
-/* set cursor position */
 	MOV rax, 1
 	MOV rdi, 1
 	LEA rsi, ANSI_move_cursor_home
 	MOV rdx, 3
 	SYSCALL
-	CALL move_cursor_down
+	MOV rax, 1
+	MOV rdi, 1
+	LEA rsi, ANSI_move_cursor_down
+	MOV rdx, 4
+	SYSCALL
 	LEA rax, file_contents
 	MOV QWORD PTR [file_contents_pointer], rax
 	LEA rax, termios
@@ -217,12 +220,8 @@ _start.loop_normal:
 	CALL get_keyboard_input
 	CMP BYTE PTR [keyboard_input], 'D'
 	JE _start.left_arrow_pressed_normal
-	CMP BYTE PTR [keyboard_input], 'A'
-	JE _start.up_arrow_pressed_normal
 	CMP BYTE PTR [keyboard_input], 'C'
 	JE _start.right_arrow_pressed_normal
-	CMP BYTE PTR [keyboard_input], 'B'
-	JE _start.down_arrow_pressed_normal
 _start.escape_sequence_not_pressed_normal:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_normal
@@ -252,46 +251,31 @@ _start.s_pressed_normal:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_normal
 _start.left_arrow_pressed_normal:
-/* set cursor position */
+/* set new user interface */
 	CALL move_cursor_left
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_normal
-_start.up_arrow_pressed_normal:
-/* set cursor position */
-	CALL move_cursor_up
-	MOV BYTE PTR [keyboard_input], 0
-	JMP _start.loop_normal
 _start.right_arrow_pressed_normal:
-/* set cursor position */
 	CALL move_cursor_right
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_normal
-_start.down_arrow_pressed_normal:
-/* set cursor position */
-	CALL move_cursor_down
-	MOV BYTE PTR [keyboard_input], 0
-        JMP _start.loop_normal
 _start.loop_insert:
+/* get user input */
 	CALL get_keyboard_input
 	CMP BYTE PTR [keyboard_input], 27
 	JNE _start.escape_sequence_not_pressed_insert
 	CALL get_keyboard_input
 	CMP BYTE PTR [keyboard_input], 27
 	JE _start.escape_pressed_insert
-	CALL get_keyboard_input
 	CMP BYTE PTR [keyboard_input], '['
 	JNE _start.escape_sequence_not_pressed_insert
 	CALL get_keyboard_input
 	CMP BYTE PTR [keyboard_input], 'D'
 	JE _start.left_arrow_pressed_insert
-	CMP BYTE PTR [keyboard_input], 'A'
-	JE _start.up_arrow_pressed_insert
 	CMP BYTE PTR [keyboard_input], 'C'
 	JE _start.right_arrow_pressed_insert
-	CMP BYTE PTR [keyboard_input], 'B'
-	JE _start.down_arrow_pressed_insert
 _start.escape_sequence_not_pressed_insert:
-/* set user interface */
+/* set new user interface */
 	MOV rax, 1
 	MOV rdi, 1
 	LEA rsi, keyboard_input
@@ -303,23 +287,11 @@ _start.escape_pressed_insert:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_normal
 _start.left_arrow_pressed_insert:
-/* set cursor position */
 	CALL move_cursor_left
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_insert
-_start.up_arrow_pressed_insert:
-/* set cursor position */
-	CALL move_cursor_up
-	MOV BYTE PTR [keyboard_input], 0
-	JMP _start.loop_insert
 _start.right_arrow_pressed_insert:
-/* set cursor position */
 	CALL move_cursor_right
-	MOV BYTE PTR [keyboard_input], 0
-	JMP _start.loop_insert
-_start.down_arrow_pressed_insert:
-/* set cursor position */
-	CALL move_cursor_down
 	MOV BYTE PTR [keyboard_input], 0
 	JMP _start.loop_insert
 _start.loop_selection:
@@ -331,7 +303,7 @@ _start.escape_pressed_normal:
         MOV rsi, 0x5403
         LEA rdx, original_termios
         SYSCALL
-/* set user interface and set cursor position */
+/* set new user interface */
 	MOV rax, 1
 	MOV rdi, 1
 	LEA rsi, ANSI_clear_screen_move_cursor_home
@@ -373,6 +345,7 @@ move_cursor_right:
 	PUSH rcx
 	PUSH r9
 	MOV rax, [file_length]
+	SUB rax, 1
 	CMP QWORD PTR [file_contents_offset], rax
 	JE move_cursor_right.exit
         ADD QWORD PTR [file_contents_offset], 1
@@ -441,9 +414,24 @@ move_cursor_left:
 	CMP BYTE PTR [rax], '\n'
 	JNE move_cursor_left.line_break_has_not_been_found
 	SUB QWORD PTR [terminal_row_pointer], 1
+	MOV QWORD PTR [terminal_column_pointer], 1
+	CMP QWORD PTR [terminal_row_pointer], 2
+	JNE move_cursor_left.row_one_not_reached
+	MOV rbx, [file_contents_offset]
+move_cursor_left.look_for_beggining_of_file:
+	ADD QWORD PTR [terminal_column_pointer], 1
+	SUB rbx, 1
+	CMP rbx, 0
+	JNE move_cursor_left.look_for_beggining_of_file
+	LEA rcx, position
+	MOV r9, 2
+	MOV BYTE PTR [rcx], '2'
+	ADD rcx, 1
+	ADD r9, 1
+	JMP move_cursor_left.skip_check_for_line_break
+move_cursor_left.row_one_not_reached:
 	MOV rax, [file_contents_pointer]
 	SUB rax, 1
-	MOV QWORD PTR [terminal_column_pointer], 1
 move_cursor_left.line_break_not_found:
 	SUB rax, 1
 	ADD QWORD PTR [terminal_column_pointer], 1
@@ -462,6 +450,7 @@ move_cursor_left.row_string_length_not_found:
 	SUB rbx, 1
 	CMP rbx, 0
 	JNE move_cursor_left.row_string_length_not_found
+move_cursor_left.skip_check_for_line_break:
 	MOV BYTE PTR [rcx], ';'
 	ADD rcx, 1
 	ADD r9, 1
@@ -495,38 +484,6 @@ move_cursor_left.exit:
 	POP r9
 	POP rcx
 	POP rbx
-        POP rdx
-        POP rsi
-        POP rdi
-        POP rax
-        RET
-
-move_cursor_up:
-        PUSH rax
-        PUSH rdi
-        PUSH rsi
-        PUSH rdx
-        MOV rax, 1
-        MOV rdi, 1
-        LEA rsi, ANSI_move_cursor_up
-        MOV rdx, 4
-        SYSCALL
-        POP rdx
-        POP rsi
-        POP rdi
-        POP rax
-        RET
-
-move_cursor_down:
-        PUSH rax
-        PUSH rdi
-        PUSH rsi
-        PUSH rdx
-        MOV rax, 1
-        MOV rdi, 1
-        LEA rsi, ANSI_move_cursor_down
-        MOV rdx, 4
-        SYSCALL
         POP rdx
         POP rsi
         POP rdi
