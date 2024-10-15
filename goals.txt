@@ -6,4 +6,5 @@ Handle end key presses
 Handle page up key presses
 Handle page down key presses
 Handle scrolling
+Handle tabs
 

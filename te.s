@@ -37,6 +37,8 @@ ANSI_move_cursor_right:
 	.ascii "\033[1C" # length = 4
 ANSI_move_cursor_left:
 	.ascii "\033[1D" # length = 4
+ANSI_move_cursor_left_by_8:
+	.ascii "\033[8D" # length = 4
 ANSI_clear_screen_move_cursor_home_white_background_black_foregound:
         .ascii "\033c\033[H\033[30m\033[107m" # length = 16
 ANSI_clear_screen_move_cursor_home:
@@ -384,6 +386,19 @@ _start.left_arrow_pressed:
 	CMP QWORD PTR [terminal_row_pointer], 3
 	JNE _start.move_cursor_left_cursor_column_is_not_3
 
+	MOV rax, [file_contents_pointer]
+
+        MOV QWORD PTR [terminal_column_pointer], -1
+
+_start.move_cursor_left_loop0:
+
+        SUB rax, 1
+
+        ADD QWORD PTR [terminal_column_pointer], 1
+
+        CMP BYTE PTR [rax], 0
+        JNE _start.move_cursor_left_loop0
+
 	MOV r10, 1
 
 _start.move_cursor_left_cursor_column_is_not_3:
@@ -428,28 +443,15 @@ _start.move_cursor_left_loop:
 	SUB rax, 1
 
 	ADD QWORD PTR [terminal_column_pointer], 1
+	CMP BYTE PTR [rax], '\t'
+	JNE _start.move_cursor_left_tab_not_found
 
+	ADD QWORD PTR [terminal_column_pointer], 7
+_start.move_cursor_left_tab_not_found:
 	CMP BYTE PTR [rax], '\n'
 	JNE _start.move_cursor_left_loop
 
-	JMP _start.move_cursor_left_continue
-
 _start.move_cursor_left_cursor_row_is_3:
-
-	MOV rax, [file_contents_pointer]
-
-	MOV QWORD PTR [terminal_column_pointer], -1
-
-_start.move_cursor_left_loop1:
-
-	SUB rax, 1
-
-	ADD QWORD PTR [terminal_column_pointer], 1
-
-	CMP BYTE PTR [rax], 0
-	JNE _start.move_cursor_left_loop1
-
-_start.move_cursor_left_continue:
 
 	MOV BYTE PTR [rcx], ';'
 
@@ -494,18 +496,29 @@ _start.move_cursor_left_column_string_length_not_found:
 	JMP _start.move_cursor_left_exit
 
 _start.move_cursor_left_not_in_first_column:
+	MOV rax, [file_contents_pointer]
+	SUB rax, 1
+	CMP BYTE PTR [rax], '\t'
+	JNE _start.move_cursor_left_tab_not_found0
 
+	MOV rax, 1
+        MOV rdi, 1
+        LEA rsi, ANSI_move_cursor_left_by_8
+        MOV rdx, 4
+        SYSCALL
+	SUB QWORD PTR [terminal_column_pointer], 8
+	JMP _start.move_cursor_left_handle_ram
+_start.move_cursor_left_tab_not_found0:
 	MOV rax, 1
 	MOV rdi, 1
 	LEA rsi, ANSI_move_cursor_left
 	MOV rdx, 4
 	SYSCALL
-
+	SUB QWORD PTR [terminal_column_pointer], 1
+_start.move_cursor_left_handle_ram:
 	SUB QWORD PTR [file_contents_offset], 1 
 
 	SUB QWORD PTR [file_contents_pointer], 1
-
-	SUB QWORD PTR [terminal_column_pointer], 1
 
 _start.move_cursor_left_exit:
 
