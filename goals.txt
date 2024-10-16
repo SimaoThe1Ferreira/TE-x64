@@ -6,4 +6,6 @@ Handle end key presses
 Handle page up key presses
 Handle page down key presses
 Handle scrolling
-Handle last row when pressing the right arrow key
+Handle tabs
+Deal with terminal dismensions
+
