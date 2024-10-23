@@ -1,8 +1,5 @@
 #!/bin/bash
-echo "as te.s -o te.o"
-as te.s -o te.o
-echo "ld te.o -o te -static"
-ld te.o -o te.elf -static
-echo "rm te.o"
-rm te.o
+echo "gcc te.s -o te.elf -no-pie"
+gcc te.s -o te.elf -no-pie
+
 
