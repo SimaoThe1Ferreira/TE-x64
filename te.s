@@ -29,11 +29,11 @@ main.log_filename_length_not_reached:
         MOV rsi, 0b10001000001
         MOV rdx, 0b111111111
         SYSCALL
-	MOV QWORD PTR [file_descriptor], rax
+	MOV QWORD PTR [log_file.descriptor], rax
 	PUSH rax
 	PUSH rbx
-	LEA rax, log.entering_the_app_at_address
-	MOV rbx, 29
+	LEA rax, log.entering_te_at_address
+	MOV rbx, 24
 	CALL write_log
 	LEA rax, main
 	CALL integer_to_string
@@ -51,14 +51,14 @@ main.log_filename_length_not_reached:
 	LEA rsi, error_msg.args_count
 	MOV rdx, 60
 	SYSCALL
-	LEA rax, log.exiting_the_app_with_exit_status_code
-        MOV rbx, 39
+	LEA rax, log.2_command_line_arguments_were_not_entered
+	MOV rbx, 43
+	CALL write_log
+	LEA rax, log.exiting_te_with_exit_status_code
+        MOV rbx, 33
         CALL write_log
 	LEA rax, log.1
-	MOV rbx, 2
-	CALL write_log
-	LEA rax, line_break
-	MOV rbx, 1
+	MOV rbx, 4
 	CALL write_log
 	CALL close_log
 	MOV rdi, 1
@@ -66,6 +66,9 @@ main.log_filename_length_not_reached:
 main.two_typed_arguments:
 	PUSH rax
         PUSH rbx
+	LEA rax, log.2_command_line_arguments_were_entered
+	MOV rbx, 39
+	CALL write_log
 	LEA rax, log.looking_for_a_forwardslash_on_the_second_command_line_argument
 	MOV rbx, 64
 	CALL write_log
@@ -82,14 +85,11 @@ main.null_byte_not_found_when_finding_backslash:
 	LEA rsi, error_msg.forwardslash
 	MOV rdx, 45
 	SYSCALL
-	LEA rax, log.exiting_the_app_with_exit_status_code
-        MOV rbx, 39
+	LEA rax, log.exiting_te_with_exit_status_code
+        MOV rbx, 33
         CALL write_log
 	LEA rax, log.2
-	MOV rbx, 2
-	CALL write_log
-	LEA rax, line_break
-	MOV rbx, 1
+	MOV rbx, 4
 	CALL write_log
 	CALL close_log
 	MOV rdi, 2
@@ -114,8 +114,8 @@ main.backslash_not_found:
 	MOV rbx, 0
 	PUSH rax
 	PUSH rbx
-	LEA rax, log.getting_the_length_of_the_second_command_line_argument_by_looking_for_its_null_byte
-	MOV rbx, 85
+	LEA rax, log.getting_the_length_of_the_second_command_line_argument
+	MOV rbx, 56
 	CALL write_log
 	POP rbx
 	POP rax
@@ -137,8 +137,8 @@ main.null_terminator_is_not_found0:
 	SYSCALL
 	PUSH rax
 	PUSH rbx
-	LEA rax, log.getting_the_working_directory
-	MOV rbx, 31
+	LEA rax, log.copying_the_working_directory_character_array_to_the_file.path_buffer
+	MOV rbx, 71
 	CALL write_log
 	POP rbx
 	POP rax
@@ -357,7 +357,7 @@ main.loop_normal:
 	JE main.left_arrow_pressed
 	CMP BYTE PTR [keyboard_input], 'C'
 	JE main.right_arrow_pressed
-	main.escape_sequence_not_pressed_normal:
+main.escape_sequence_not_pressed_normal:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP main.loop_normal
 main.i_pressed:
@@ -371,22 +371,20 @@ main.i_pressed:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP main.loop_insert
 main.s_pressed:
+	PUSH rax
+        PUSH rbx
+	LEA rax, log.saving_the_file
+	MOV rbx, 17
+        CALL write_log
+        POP rbx
+        POP rax
 	MOV rax, 2
 	LEA rdi, file.path
 	MOV rsi, 0b1001000001
 	MOV rdx, 0b111111111
 	SYSCALL
-	PUSH rax
-	MOV rdi, rax
-	LEA rsi, file.contents
-	MOV rdx, [file.length]
-	MOV rax, 1
-	SYSCALL
-	MOV rax, 3
-	POP rdi
-	SYSCALL
-	MOV BYTE PTR [keyboard_input], 0
-	JMP main.loop_normal
+	MOV QWORD PTR [file.descriptor], rax
+	LEA rax, file.contents
 main.null_terminator_is_not_found3:
       	CMP BYTE PTR [rax], 0
        	JE main.null_terminator_is_found
@@ -395,23 +393,58 @@ main.null_terminator_is_not_found3:
 	JMP main.null_terminator_is_not_found3
 main.null_terminator_is_found:
 	PUSH rbx
-	MOV rdi, r10
+	MOV rdi, [file.descriptor]
 	LEA rsi, file.contents
 	POP rdx
 	MOV rax, 1
 	SYSCALL
 	MOV rax, 3
-	POP rdi
+	MOV rdi, [file.descriptor]
 	SYSCALL
 	MOV BYTE PTR [keyboard_input], 0
 	JMP main.loop_normal
 main.left_arrow_pressed:
-	CMP BYTE PTR [terminal.column_pointer], 1
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.left_arrow_key_was_pressed
+	MOV rbx, 28
+	CALL write_log
+	POP rbx
+	POP rax
+	CMP QWORD PTR [terminal.column_pointer], 1
 	JNE main.move_cursor_left_not_in_first_column
+	PUSH rax
+        PUSH rbx
+        LEA rax, log.cursor_position_is_column_1
+        MOV rbx, 30
+        CALL write_log
+        POP rbx
+        POP rax
 	CMP QWORD PTR [terminal.row_pointer], 2
 	JE main.move_cursor_left_exit
+	PUSH rax
+        PUSH rbx
+        LEA rax, log.cursor_position_is_not_row_2
+        MOV rbx, 31
+        CALL write_log
+        POP rbx
+        POP rax
 	CMP QWORD PTR [terminal.row_pointer], 3
-	JNE main.move_cursor_left_cursor_column_is_not_3
+	JNE main.move_cursor_left_cursor_row_is_not_3
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.cursor_position_is_row_3
+	MOV rbx, 27
+	CALL write_log
+	POP rbx
+	POP rax
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.getting_the_length_of_the_anterior_line_relative_to_cursor_position
+	MOV rbx, 70
+	CALL write_log
+	POP rbx
+	POP rax
 	MOV rax, [file.contents_pointer]
 	MOV QWORD PTR [terminal.column_pointer], -1
 main.move_cursor_left_loop0:
@@ -420,12 +453,29 @@ main.move_cursor_left_loop0:
 	CMP BYTE PTR [rax], 0
 	JNE main.move_cursor_left_loop0
 	MOV r10, 1
-main.move_cursor_left_cursor_column_is_not_3:
+main.move_cursor_left_cursor_row_is_not_3:
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.cursor_position_is_not_row_3
+	MOV rbx, 30
+	CALL write_log
+	LEA rax, log.convert_long_cursor_position_to_string
+	MOV rbx, 43
+	CALL write_log
+	POP rbx
+	POP rax
 	SUB QWORD PTR [terminal.row_pointer], 1
 	LEA r12, position
 	MOV r11, 2
 	MOV rax, [terminal.row_pointer]
 	CALL integer_to_string
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.copying_ram_from_digits_msg_buffer_to_the_position_buffer
+	MOV rbx, 59
+	CALL write_log
+	POP rbx
+	POP rax
 main.move_cursor_left_row_string_length_not_found:
 	MOV dl, [rax]
 	MOV BYTE PTR [r12], dl
@@ -437,6 +487,11 @@ main.move_cursor_left_row_string_length_not_found:
 	JNE main.move_cursor_left_row_string_length_not_found
 	CMP r10, 1
 	JE main.move_cursor_left_cursor_row_is_3
+	PUSH rax
+	PUSH rbx
+	LEA rax, 
+	POP rbx
+	POP rax
 	MOV rax, [file.contents_pointer]
 	SUB rax, 1
 	MOV QWORD PTR [terminal.column_pointer], 0
@@ -503,6 +558,13 @@ main.move_cursor_left_exit:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP main.loop_normal
 main.right_arrow_pressed:
+	PUSH rax
+	PUSH rbx
+	LEA rax, log.right_arrow_key_was_pressed
+	MOV rbx, 29
+	CALL write_log
+	POP rbx
+	POP rax
 	MOV rax, [file.length]
 	CMP QWORD PTR [file.contents_offset], rax
 	JE main.move_cursor_right_exit
@@ -631,6 +693,9 @@ main.escape_sequence_not_pressed_insert:
 main.escape_pressed_insert:
 	PUSH rax
         PUSH rbx
+	LEA rax, log.escape_key_was_pressed_insert_loop
+        MOV rbx, 39
+        CALL write_log
         LEA rax, log.entering_normal_event_loop
         MOV rbx, 28
         CALL write_log
@@ -639,6 +704,9 @@ main.escape_pressed_insert:
 	MOV BYTE PTR [keyboard_input], 0
 	JMP main.loop_normal
 main.escape_pressed_normal:
+	LEA rax, log.escape_key_was_pressed_normal_loop
+	MOV rbx, 39
+	CALL write_log
 	LEA rax, log.setting_terminal_settings
 	MOV rbx, 27
 	CALL write_log
@@ -655,14 +723,11 @@ main.escape_pressed_normal:
 	LEA rsi, ANSI.clear_screen_move_cursor_home
 	MOV rdx, 5
 	SYSCALL
-	LEA rax, log.exiting_the_app_with_exit_status_code
-	MOV rbx, 39
+	LEA rax, log.exiting_te_with_exit_status_code
+	MOV rbx, 33
 	CALL write_log
 	LEA rax, log.0
-	MOV rbx, 2
-	CALL write_log
-	LEA rax, line_break
-	MOV rbx, 1
+	MOV rbx, 4
 	CALL write_log
 	CALL close_log
 	MOV rdi, 0
@@ -725,7 +790,7 @@ write_log:
 	PUSH rsi
 	PUSH rbx
 	PUSH rax
-	MOV rdi, [file_descriptor]
+	MOV rdi, [log_file.descriptor]
 	POP rsi
 	POP rdx
 	MOV rax, 1
@@ -740,15 +805,13 @@ close_log:
 	PUSH rax
         PUSH rdi
 	MOV rax, 3
-        MOV rdi, [file_descriptor]
+        MOV rdi, [log_file.descriptor]
         SYSCALL
         POP rdi
         POP rax
 	RET
 
 .data
-file_descriptor:
-	.quad 0
 space:
 	.ascii " "
 tab:
@@ -771,6 +834,32 @@ working_directory_length:
 	.quad 0
 original_termios:
 	.skip 36, 0
+log.copying_ram_from_digits_msg_buffer_to_the_position_buffer:
+	.ascii "\tCopying ram from digits_msg buffer to the position buffer\n" # length = 59
+log.convert_long_cursor_position_to_string:
+	.ascii "\tConverting long cursor position to string\n" # length = 43
+log.cursor_position_is_not_row_3:
+	.ascii "\tCursor_position is not row 3\n" # length = 30
+log.getting_the_length_of_the_anterior_line_relative_to_cursor_position:
+	.ascii "\tGetting the length of the anterior line relative to cursor position!\n" # length = 70
+log.cursor_position_is_column_1:
+	.ascii "\tCursor position is column 1!\n" # length = 30
+log.cursor_position_is_not_row_2:
+	.ascii "\tCursor position is not row 2!\n" # length = 31
+log.cursor_position_is_row_3:
+	.ascii "\tCursor position is row 3!\n" # length = 27
+log.escape_key_was_pressed_insert_loop:
+	.ascii "Escape key was pressed in insert loop!\n" #length = 39
+log.escape_key_was_pressed_normal_loop:
+	.ascii "Escape key was pressed in normal loop!\n" #length = 39
+log.right_arrow_key_was_pressed:
+	.ascii "Right arrow key was pressed!\n" # length = 29
+log.left_arrow_key_was_pressed:
+	.ascii "Left arrow key was pressed!\n" # length = 28
+log.2_command_line_arguments_were_not_entered:
+	.ascii "2 command line arguments were not entered!\n" # length = 43
+log.2_command_line_arguments_were_entered:
+	.ascii "2 command line arguments were entered!\n" # length = 39
 log.entering_normal_event_loop:
 	.ascii "Entering normal event loop!\n" # length = 28
 log.entering_insert_event_loop:
@@ -791,30 +880,36 @@ log.opening_file:
 	.ascii "Opening file!\n" # length = 14
 log.creating_the_full_path_by_adding_forward_slash_and_the_second_command_line_argument_to_the_file.path_buffer:
 	.ascii "Creating the full path by adding forward slash and the second command line argument to the file.path buffer!\n" #length = 110
-log.getting_the_working_directory:
-	.ascii "Getting the working directory!\n" # length = 31
+log.copying_the_working_directory_character_array_to_the_file.path_buffer:
+	.ascii "Copying the working directory character array to the file.path buffer!\n" # length = 71
 log.getting_the_last_character_of_the_working_directory_buffer:
-	.ascii "Getting the last character of the working directory buffer!\n" # length = 53
-log.entering_the_app_at_address:
-	.ascii "Entering the app at address: " # length = 29
-log.exiting_the_app_with_exit_status_code:
-	.ascii "Exiting the app with exit status code: " # length = 39
-log.getting_the_length_of_the_second_command_line_argument_by_looking_for_its_null_byte:
-	.ascii "Getting the length of the second command line argument by looking for its null byte!\n" # length = 85
+	.ascii "Getting the last character of the working_directory buffer!\n" # length = 53
+log.entering_te_at_address:
+	.ascii "Entering te at address: " # length = 24
+log.exiting_te_with_exit_status_code:
+	.ascii "Exiting te with exit status code " # length = 33
+log.getting_the_length_of_the_second_command_line_argument:
+	.ascii "Getting the length of the second command line argument!\n" # length = 56
 log.printing_the_command_line_interface:
 	.ascii "Printing the command line interface!\n" # length = 37
 log.looking_for_a_forwardslash_on_the_second_command_line_argument:
 	.ascii "Looking for a forwardslash on the second command line argument!\n" # length = 64
+log.saving_the_file:
+	.ascii "Saving the file!\n" # length = 17
 log.0:
-	.ascii "0\n" # length = 2
+	.ascii "0!\n\n" # length = 4
 log.1:
-	.ascii "1\n" # length = 2
+	.ascii "1!\n\n" # length = 4
 log.2:
-	.ascii "2\n" # length = 2
+	.ascii "2!\n\n" # length = 4
+log_file.descriptor:
+	.quad 0
 log_file.name:
 	.ascii "te.log" # length = 6
 log_file.path:
 	.skip 255, 0
+file.descriptor:
+	.quad 0
 file.contents_offset:
 	.quad 1
 file.contents_pointer:
@@ -829,7 +924,6 @@ terminal.row_pointer:
 	.quad 2
 terminal.column_pointer:
 	.quad 1
-	.byte 0
         .skip 18, 0
 digits_msg.last_byte:
         .byte 0
